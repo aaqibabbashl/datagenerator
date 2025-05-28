@@ -29,6 +29,7 @@ export interface AppState {
   fieldConfigs: Record<string, FieldConfig>;
   runApiRequests: boolean;
   expectedStatus: number;
+  generationMethod: GenerationMethod;
 }
 
 export interface FieldConfig {
@@ -42,6 +43,11 @@ export interface FieldConfig {
 export interface FieldMetadata {
   type: string;
   originalValue: unknown;
+}
+
+export enum GenerationMethod {
+  Loop = 'loop',
+  ParallelPromises = 'parallel'
 }
 
 export enum RandomDataType {

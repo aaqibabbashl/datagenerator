@@ -5,8 +5,8 @@ import DataGenerator from './components/DataGenerator';
 import OutputDisplay from './components/OutputDisplay';
 import { parseCurlCommand } from './utils/curlParser';
 import { generateDataFromCurl, convertToCSV } from './utils/dataGenerator';
-import { AppState, FieldConfig } from './types';
-import { Download } from 'lucide-react';
+import { AppState, FieldConfig, GenerationMethod } from './types';
+import { Sparkles, Zap, Database, Code } from 'lucide-react';
 
 // Test function to verify our fix
 const testErrorCase = () => {
@@ -93,7 +93,8 @@ function App() {
     isLoading: false,
     fieldConfigs: {},
     runApiRequests: false,
-    expectedStatus: 200
+    expectedStatus: 200,
+    generationMethod: GenerationMethod.Loop
   });
 
   // Update CURL input
@@ -115,6 +116,31 @@ function App() {
       error: null,
       fieldConfigs: {}
     }));
+  };
+
+  // Paste CURL from clipboard
+  const handlePasteCurl = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim().startsWith('curl')) {
+        setState(prev => ({
+          ...prev,
+          curlInput: text,
+          error: null
+        }));
+      } else {
+        setState(prev => ({
+          ...prev,
+          error: 'Clipboard does not contain a valid CURL command'
+        }));
+      }
+    } catch (error) {
+      console.error('Failed to read from clipboard:', error);
+      setState(prev => ({
+        ...prev,
+        error: 'Failed to access clipboard. Please paste manually.'
+      }));
+    }
   };
 
   // Handle number of entries change
@@ -183,6 +209,14 @@ function App() {
     }));
   };
 
+  // Update generation method
+  const handleGenerationMethodChange = (method: GenerationMethod) => {
+    setState(prev => ({
+      ...prev,
+      generationMethod: method
+    }));
+  };
+
   // Generate data
   const handleGenerateData = async () => {
     if (!state.parsedCurl) return;
@@ -195,7 +229,8 @@ function App() {
         state.numberOfEntries,
         state.fieldConfigs,
         state.runApiRequests,
-        state.expectedStatus
+        state.expectedStatus,
+        state.generationMethod
       );
       
       setState(prev => ({
@@ -324,13 +359,44 @@ function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
-      <Header />
+    <div className="min-h-screen bg-cyber-gradient text-neon-blue relative overflow-hidden">
+      {/* Matrix Rain Background Effect */}
+      <div className="matrix-rain">
+        {[...Array(50)].map((_, i) => (
+          <div
+            key={i}
+            className="matrix-char"
+            style={{
+              left: `${Math.random() * 100}%`,
+              animationDelay: `${Math.random() * 3}s`,
+              animationDuration: `${3 + Math.random() * 2}s`,
+            }}
+          >
+            {String.fromCharCode(0x30A0 + Math.random() * 96)}
+          </div>
+        ))}
+      </div>
+
+      {/* Cyberpunk Grid Overlay */}
+      <div className="fixed inset-0 bg-cyber-grid opacity-5 pointer-events-none"></div>
       
-      <main className="container mx-auto py-8 px-4 sm:px-6 md:px-8">
-        <div className="max-w-5xl mx-auto">
+      <Header 
+        onPasteCurl={handlePasteCurl}
+        onClearInput={handleClearInput}
+      />
+      
+      <main className="container mx-auto py-8 px-4 sm:px-6 md:px-8 relative z-10">
+        <div className="max-w-6xl mx-auto">
           {/* CURL Input Section */}
-          <section className="mb-8">
+          <section className="bg-gray-800 border border-gray-600 p-6 rounded-xl shadow-lg">
+            <div className="flex items-center gap-3 mb-6 border-b border-gray-600 pb-4">
+              <div className="bg-green-600 rounded-lg p-2">
+                <Code className="h-6 w-6 text-white" />
+              </div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white uppercase tracking-wider">
+                CURL Command Interface
+              </h2>
+            </div>
             <CurlInput
               curlInput={state.curlInput}
               onChange={handleCurlInputChange}
@@ -345,7 +411,15 @@ function App() {
           
           {/* Data Generator Section (shown after parsing) */}
           {state.parsedCurl && (
-            <section className="mb-8">
+            <section className="bg-gray-800 border border-gray-600 p-6 rounded-xl shadow-lg">
+              <div className="flex items-center gap-3 mb-6 border-b border-gray-600 pb-4">
+                <div className="bg-pink-600 rounded-lg p-2">
+                  <Database className="h-6 w-6 text-white" />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white uppercase tracking-wider">
+                  Data Generator
+                </h2>
+              </div>
               <DataGenerator
                 parsedCurl={state.parsedCurl}
                 numberOfEntries={state.numberOfEntries}
@@ -359,13 +433,23 @@ function App() {
                 onGenerate={handleGenerateData}
                 isLoading={state.isLoading}
                 onUpdateHeaders={handleHeadersUpdate}
+                generationMethod={state.generationMethod}
+                onGenerationMethodChange={handleGenerationMethodChange}
               />
             </section>
           )}
           
           {/* Output Display Section (shown after generating) */}
           {state.generatedData && state.generatedData.entries && state.generatedData.entries.length > 0 && (
-            <section>
+            <section className="bg-gray-800 border border-gray-600 p-6 rounded-xl shadow-lg">
+              <div className="flex items-center gap-3 mb-6 border-b border-gray-600 pb-4">
+                <div className="bg-cyan-600 rounded-lg p-2">
+                  <Zap className="h-6 w-6 text-white" />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-bold text-white uppercase tracking-wider">
+                  Data Output
+                </h2>
+              </div>
               <OutputDisplay
                 data={state.generatedData.entries}
                 apiResults={state.generatedData.apiResults}
@@ -376,39 +460,57 @@ function App() {
           
           {/* Empty State (when nothing has been parsed/generated) */}
           {!state.parsedCurl && !state.isLoading && (
-            <div className="text-center py-12 bg-white dark:bg-gray-800 rounded-lg shadow-md animate-fadeIn">
-              <Download className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-2">
-                Ready to generate dummy data
-              </h3>
-              <p className="text-gray-500 dark:text-gray-400 max-w-md mx-auto mb-6">
-                Paste a CURL command above and click "Parse" to set up data generation options.
-                You can configure static values or run API requests with the generated data.
-              </p>
-              <div className="flex flex-col gap-3 max-w-md mx-auto text-left bg-gray-50 dark:bg-gray-700 p-4 rounded-md">
-                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">Key Features:</p>
-                <ul className="text-sm space-y-1 text-gray-600 dark:text-gray-400">
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
-                    Smart field name detection for realistic data
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
-                    Configure static values or generate random data
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <span className="w-1.5 h-1.5 bg-primary-500 rounded-full"></span>
-                    Run API requests with the generated data
-                  </li>
-                </ul>
+            <div className="text-center py-16">
+              <div className="bg-gray-800 border border-gray-600 p-8 rounded-xl max-w-2xl mx-auto">
+                <div className="bg-blue-600 rounded-full w-24 h-24 mx-auto mb-6 flex items-center justify-center">
+                  <Sparkles className="h-12 w-12 text-white" />
+                </div>
+                
+                <h3 className="text-2xl font-bold text-white mb-4 uppercase tracking-wider">
+                  Data Generator Ready
+                </h3>
+                
+                <p className="text-gray-300 mb-6 leading-relaxed">
+                  Start by inputting your CURL command above. The system will analyze and transform your API requests into synthetic data.
+                </p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm">
+                  <div className="bg-gray-700 border border-gray-600 p-4 rounded-lg">
+                    <div className="text-green-400 font-semibold mb-2">⚡ Fast Processing</div>
+                    <div className="text-gray-300">Advanced data generation</div>
+                  </div>
+                  <div className="bg-gray-700 border border-gray-600 p-4 rounded-lg">
+                    <div className="text-pink-400 font-semibold mb-2">🔮 Smart Analysis</div>
+                    <div className="text-gray-300">Intelligent CURL parsing</div>
+                  </div>
+                  <div className="bg-gray-700 border border-gray-600 p-4 rounded-lg">
+                    <div className="text-cyan-400 font-semibold mb-2">🚀 Real-time Results</div>
+                    <div className="text-gray-300">Instant data transformation</div>
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </div>
       </main>
       
-      <footer className="mt-auto py-6 text-center text-sm text-gray-500 dark:text-gray-400">
-        <p>CURL Dummy Data Generator © 2025</p>
+      <footer className="relative z-10 mt-auto py-8 text-center border-t border-gray-700">
+        <div className="container mx-auto px-4">
+          <div className="bg-gray-800 border border-gray-600 p-4 rounded-lg inline-block">
+            <p className="text-gray-300 text-sm">
+              CURL DATA GENERATOR © 2024 | 
+              <span className="text-white ml-2 font-semibold">Engineered by Aaqib Abbas</span> | 
+              <span className="text-blue-400 ml-2">Professional Technology</span>
+            </p>
+            <div className="flex items-center justify-center gap-4 mt-2 text-xs">
+              <span className="text-gray-400">Version 3.0.1</span>
+              <span className="text-gray-600">|</span>
+              <span className="text-gray-400">System Active</span>
+              <span className="text-gray-600">|</span>
+              <span className="text-gray-400">Ready for Processing</span>
+            </div>
+          </div>
+        </div>
       </footer>
     </div>
   );

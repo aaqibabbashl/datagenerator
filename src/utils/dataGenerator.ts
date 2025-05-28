@@ -1,5 +1,5 @@
 import Chance from 'chance';
-import { ParsedCurl, FieldConfig, ApiResult, RandomDataType, FieldMetadata } from '../types';
+import { ParsedCurl, FieldConfig, ApiResult, RandomDataType, FieldMetadata, GenerationMethod } from '../types';
 
 const chance = new Chance();
 
@@ -383,6 +383,7 @@ export const generateValueForField = (
  * @param fieldConfigs - Optional field configurations
  * @param runApi - Whether to run API requests
  * @param expectedStatus - Expected HTTP status code
+ * @param generationMethod - Method to use for generating data
  * @returns Object containing generated data and optional API results
  */
 export const generateDataFromCurl = async (
@@ -390,9 +391,29 @@ export const generateDataFromCurl = async (
   count: number,
   fieldConfigs: Record<string, FieldConfig> = {},
   runApi = false,
-  expectedStatus = 200
+  expectedStatus = 200,
+  generationMethod: GenerationMethod = GenerationMethod.Loop
 ): Promise<{ entries: Record<string, unknown>[], apiResults?: ApiResult[] }> => {
   const fields = extractFieldsFromParsedCurl(parsedCurl);
+  
+  if (generationMethod === GenerationMethod.ParallelPromises) {
+    return generateDataParallel(parsedCurl, fields, count, fieldConfigs, runApi, expectedStatus);
+  } else {
+    return generateDataLoop(parsedCurl, fields, count, fieldConfigs, runApi, expectedStatus);
+  }
+};
+
+/**
+ * Generate data using sequential loop method (original implementation)
+ */
+const generateDataLoop = async (
+  parsedCurl: ParsedCurl,
+  fields: Record<string, FieldMetadata>,
+  count: number,
+  fieldConfigs: Record<string, FieldConfig>,
+  runApi: boolean,
+  expectedStatus: number
+): Promise<{ entries: Record<string, unknown>[], apiResults?: ApiResult[] }> => {
   const entries: Record<string, unknown>[] = [];
   const apiResults: ApiResult[] = [];
   
@@ -401,66 +422,109 @@ export const generateDataFromCurl = async (
     entries.push(entry);
     
     if (runApi) {
-      try {
-        const method = parsedCurl.method.toUpperCase();
-        const isGetOrHead = method === 'GET' || method === 'HEAD';
-        
-        let url = parsedCurl.url;
-        const requestOptions: RequestInit = {
-          method: parsedCurl.method,
-          headers: parsedCurl.headers,
-        };
-        
-        // For GET/HEAD methods, append query parameters to URL instead of using body
-        if (isGetOrHead && entry) {
-          const queryParams = new URLSearchParams();
-          Object.entries(entry).forEach(([key, value]) => {
-            if (value !== undefined && value !== null) {
-              queryParams.append(key, String(value));
-            }
-          });
-          
-          // Append query parameters to URL
-          const hasExistingParams = url.includes('?');
-          url = `${url}${hasExistingParams ? '&' : '?'}${queryParams.toString()}`;
-        } else {
-          // Check if the entry contains a properties field which should be an object
-          const entryForRequest = { ...entry };
-          if (entry.properties && typeof entry.properties === 'object') {
-            // Ensure properties is treated as an object, not a dotted path
-            entryForRequest.properties = entry.properties;
-          }
-          
-          // For other methods, include the body as JSON
-          requestOptions.body = JSON.stringify(entryForRequest);
-        }
-        
-        const response = await fetch(url, requestOptions);
-        
-        const result: ApiResult = {
-          status: response.status,
-          success: response.status === expectedStatus
-        };
-        
-        try {
-          result.response = await response.json();
-        } catch {
-          // Response might not be JSON
-          result.response = await response.text();
-        }
-        
-        apiResults.push(result);
-      } catch (error) {
-        apiResults.push({
-          status: 0,
-          success: false,
-          error: error instanceof Error ? error.message : 'Failed to make API request'
-        });
-      }
+      const apiResult = await makeApiRequest(parsedCurl, entry, expectedStatus);
+      apiResults.push(apiResult);
     }
   }
   
   return { entries, ...(runApi && { apiResults }) };
+};
+
+/**
+ * Generate data using parallel promises method
+ */
+const generateDataParallel = async (
+  parsedCurl: ParsedCurl,
+  fields: Record<string, FieldMetadata>,
+  count: number,
+  fieldConfigs: Record<string, FieldConfig>,
+  runApi: boolean,
+  expectedStatus: number
+): Promise<{ entries: Record<string, unknown>[], apiResults?: ApiResult[] }> => {
+  // Generate all entries in parallel
+  const entryPromises = Array.from({ length: count }, () => 
+    Promise.resolve(generateEntry(fields, fieldConfigs))
+  );
+  
+  const entries = await Promise.all(entryPromises);
+  
+  if (runApi) {
+    // Make all API requests in parallel
+    const apiPromises = entries.map(entry => 
+      makeApiRequest(parsedCurl, entry, expectedStatus)
+    );
+    
+    const apiResults = await Promise.all(apiPromises);
+    return { entries, apiResults };
+  }
+  
+  return { entries };
+};
+
+/**
+ * Make a single API request
+ */
+const makeApiRequest = async (
+  parsedCurl: ParsedCurl,
+  entry: Record<string, unknown>,
+  expectedStatus: number
+): Promise<ApiResult> => {
+  try {
+    const method = parsedCurl.method.toUpperCase();
+    const isGetOrHead = method === 'GET' || method === 'HEAD';
+    
+    let url = parsedCurl.url;
+    const requestOptions: RequestInit = {
+      method: parsedCurl.method,
+      headers: parsedCurl.headers,
+    };
+    
+    // For GET/HEAD methods, append query parameters to URL instead of using body
+    if (isGetOrHead && entry) {
+      const queryParams = new URLSearchParams();
+      Object.entries(entry).forEach(([key, value]) => {
+        if (value !== undefined && value !== null) {
+          queryParams.append(key, String(value));
+        }
+      });
+      
+      // Append query parameters to URL
+      const hasExistingParams = url.includes('?');
+      url = `${url}${hasExistingParams ? '&' : '?'}${queryParams.toString()}`;
+    } else {
+      // Check if the entry contains a properties field which should be an object
+      const entryForRequest = { ...entry };
+      if (entry.properties && typeof entry.properties === 'object') {
+        // Ensure properties is treated as an object, not a dotted path
+        entryForRequest.properties = entry.properties;
+      }
+      
+      // For other methods, include the body as JSON
+      requestOptions.body = JSON.stringify(entryForRequest);
+    }
+    
+    const response = await fetch(url, requestOptions);
+    
+    const result: ApiResult = {
+      status: response.status,
+      success: response.status === expectedStatus
+    };
+    
+    try {
+      result.response = await response.json();
+    } catch {
+      // Response might not be JSON
+      result.response = await response.text();
+    }
+    
+    return result;
+  } catch (error) {
+    return {
+      status: 0,
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to make API request'
+    };
+  }
 };
 
 /**

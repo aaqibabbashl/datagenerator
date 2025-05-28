@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Database, ChevronDown, ChevronUp, Play, List, Edit, Zap } from 'lucide-react';
-import { ParsedCurl, FieldConfig, FieldMetadata, RandomDataType } from '../types';
+import { Database, ChevronDown, ChevronUp, Play, List, Edit, Zap, Settings, Cpu, Network, Terminal, Layers } from 'lucide-react';
+import { ParsedCurl, FieldConfig, FieldMetadata, RandomDataType, GenerationMethod } from '../types';
 import { extractFieldsFromParsedCurl } from '../utils/curlParser';
 import HeaderEditor from './HeaderEditor';
 
@@ -17,6 +17,8 @@ interface DataGeneratorProps {
   onGenerate: () => void;
   isLoading: boolean;
   onUpdateHeaders: (headers: Record<string, string>) => void;
+  generationMethod: GenerationMethod;
+  onGenerationMethodChange: (method: GenerationMethod) => void;
 }
 
 const DataGenerator: React.FC<DataGeneratorProps> = ({
@@ -31,7 +33,9 @@ const DataGenerator: React.FC<DataGeneratorProps> = ({
   onExpectedStatusChange,
   onGenerate,
   isLoading,
-  onUpdateHeaders
+  onUpdateHeaders,
+  generationMethod,
+  onGenerationMethodChange
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [method, setMethod] = useState(parsedCurl.method);
@@ -203,24 +207,6 @@ const DataGenerator: React.FC<DataGeneratorProps> = ({
     }
   };
 
-  // Helper function to detect and highlight authorization tokens
-  const formatHeaderValue = (key: string, value: string) => {
-    if (key.toLowerCase() === 'authorization') {
-      const parts = value.split(' ');
-      if (parts.length === 2 && ['bearer', 'basic', 'token'].includes(parts[0].toLowerCase())) {
-        return (
-          <span className="flex items-center">
-            <span className="font-medium text-primary-600 dark:text-primary-400">{parts[0]}</span>
-            <span className="ml-1 text-xs bg-gray-100 dark:bg-gray-600 px-1 rounded-sm overflow-x-auto max-w-60 truncate" title={parts[1]}>
-              {parts[1]}
-            </span>
-          </span>
-        );
-      }
-    }
-    return value;
-  };
-
   const handleHeaderSave = (updatedHeaders: Record<string, string>) => {
     onUpdateHeaders(updatedHeaders);
     setShowHeaderEditor(false);
@@ -228,367 +214,339 @@ const DataGenerator: React.FC<DataGeneratorProps> = ({
   
   // Add a helper function to group fields by their parent properties
   const groupFieldsByParent = (fields: Record<string, FieldMetadata>) => {
-    const groups: Record<string, Record<string, FieldMetadata>> = {
-      '': {} // Root level fields
-    };
+    const grouped: Record<string, Record<string, FieldMetadata>> = {};
     
     Object.entries(fields).forEach(([fieldName, metadata]) => {
       const parts = fieldName.split('.');
-      if (parts.length === 1) {
-        // Root level field
-        groups[''][fieldName] = metadata;
+      if (parts.length > 1) {
+        const parent = parts[0];
+        const child = parts.slice(1).join('.');
+        
+        if (!grouped[parent]) {
+          grouped[parent] = {};
+        }
+        grouped[parent][child] = metadata;
       } else {
-        // Get the top-level parent
-        const topParent = parts[0];
-        
-        if (!groups[topParent]) {
-          groups[topParent] = {};
+        if (!grouped['_root']) {
+          grouped['_root'] = {};
         }
-        
-        if (parts.length === 2) {
-          // Direct child of top parent
-          groups[topParent][parts[1]] = metadata;
-        } else {
-          // Nested deeper, use dot notation for the rest
-          const restOfPath = parts.slice(1).join('.');
-          groups[topParent][restOfPath] = metadata;
-        }
+        grouped['_root'][fieldName] = metadata;
       }
     });
     
-    return groups;
+    return grouped;
   };
   
   // Function to render the random data type options dropdown
   const renderRandomTypeOptions = () => {
-    return Object.values(RandomDataType).map(type => {
-      // Format the enum value for display (e.g., "firstName" -> "First Name")
-      const displayName = type === RandomDataType.Default 
-        ? "Auto Detect" 
-        : type.replace(/([A-Z])/g, ' $1')
-          .replace(/^./, str => str.toUpperCase())
-          .trim();
-      
-      return (
-        <option key={type} value={type}>
-          {displayName}
-        </option>
-      );
-    });
+    return Object.values(RandomDataType).map(type => (
+      <option key={type} value={type}>
+        {type.charAt(0).toUpperCase() + type.slice(1).replace(/([A-Z])/g, ' $1')}
+      </option>
+    ));
   };
-  
+
+  const groupedFields = groupFieldsByParent(fields);
+
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 animate-fadeIn">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Database className="h-5 w-5 text-primary-500" />
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">Data Generation Settings</h2>
-        </div>
-        
-        <button
-          onClick={handleToggleDetails}
-          className="p-1.5 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
-        >
-          {showDetails ? (
-            <ChevronUp className="h-4 w-4" />
-          ) : (
-            <ChevronDown className="h-4 w-4" />
-          )}
-          <span className="sr-only">Show details</span>
-        </button>
-      </div>
+    <div className="cyber-card bg-gradient-to-br from-dark-800/90 to-dark-900/90 backdrop-blur-sm border border-neon-purple/30 rounded-lg shadow-2xl shadow-neon-purple/20 p-6 animate-fadeIn relative overflow-hidden">
+      {/* Animated background elements */}
+      <div className="absolute inset-0 bg-gradient-to-r from-neon-purple/5 to-neon-pink/5 animate-pulse"></div>
+      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-neon-purple via-neon-pink to-neon-cyan animate-dataFlow"></div>
       
-      {/* Request details */}
-      <div className="mb-4 border-b border-gray-200 dark:border-gray-700 pb-4">
-        <div className="flex flex-col sm:flex-row justify-between gap-4 mb-3">
-          <div className="flex items-center gap-2">
-            <label htmlFor="httpMethod" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Method:
+      <div className="relative z-10">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-3">
+            <div className="relative">
+              <Cpu className="h-6 w-6 text-neon-purple animate-neonGlow" />
+              <div className="absolute inset-0 bg-neon-purple/20 rounded-full blur-md animate-pulse"></div>
+            </div>
+            <div>
+              <h2 className="text-xl font-bold bg-gradient-to-r from-neon-purple to-neon-pink bg-clip-text text-transparent font-orbitron">
+                NEURAL DATA GENERATOR
+              </h2>
+              <p className="text-sm text-neon-purple/70 font-rajdhani">
+                Advanced field configuration • AI-powered generation
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setShowHeaderEditor(!showHeaderEditor)}
+              className="cyber-button flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-neon-cyan/20 to-neon-cyan/10 border border-neon-cyan/50 rounded-lg text-neon-cyan hover:from-neon-cyan/30 hover:to-neon-cyan/20 hover:border-neon-cyan transition-all duration-300 hover:shadow-lg hover:shadow-neon-cyan/30 group"
+              title="Configure headers"
+            >
+              <Settings className="h-4 w-4 group-hover:animate-spin" />
+              <span className="font-rajdhani font-medium">HEADERS</span>
+            </button>
+            
+            <button
+              onClick={handleToggleDetails}
+              className="cyber-button flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-neon-purple/20 to-neon-purple/10 border border-neon-purple/50 rounded-lg text-neon-purple hover:from-neon-purple/30 hover:to-neon-purple/20 hover:border-neon-purple transition-all duration-300 hover:shadow-lg hover:shadow-neon-purple/30 group"
+              title="Toggle field details"
+            >
+              <List className="h-4 w-4" />
+              <span className="font-rajdhani font-medium">
+                {showDetails ? 'HIDE DETAILS' : 'SHOW DETAILS'}
+              </span>
+              {showDetails ? (
+                <ChevronUp className="h-4 w-4 group-hover:animate-bounce" />
+              ) : (
+                <ChevronDown className="h-4 w-4 group-hover:animate-bounce" />
+              )}
+            </button>
+          </div>
+        </div>
+
+        {/* Header Editor */}
+        {showHeaderEditor && (
+          <div className="mb-6">
+            <HeaderEditor
+              headers={parsedCurl.headers}
+              onSave={handleHeaderSave}
+              onCancel={() => setShowHeaderEditor(false)}
+            />
+          </div>
+        )}
+
+        {/* Configuration Panel */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+          {/* Number of Entries */}
+          <div className="cyber-card bg-gradient-to-br from-neon-cyan/10 to-neon-cyan/5 border border-neon-cyan/30 rounded-lg p-4">
+            <label className="block text-sm font-medium text-neon-cyan mb-2 font-rajdhani">
+              <Database className="inline h-4 w-4 mr-2" />
+              DATA ENTRIES
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="1000"
+              value={numberOfEntries}
+              onChange={(e) => onChangeNumberOfEntries(parseInt(e.target.value) || 1)}
+              className="cyber-input w-full px-3 py-2 bg-dark-800/50 border border-neon-cyan/30 rounded-md text-neon-cyan placeholder-neon-cyan/50 focus:outline-none focus:ring-2 focus:ring-neon-cyan/50 focus:border-neon-cyan font-fira-code"
+              placeholder="Enter count..."
+            />
+          </div>
+
+          {/* HTTP Method */}
+          <div className="cyber-card bg-gradient-to-br from-neon-purple/10 to-neon-purple/5 border border-neon-purple/30 rounded-lg p-4">
+            <label className="block text-sm font-medium text-neon-purple mb-2 font-rajdhani">
+              <Network className="inline h-4 w-4 mr-2" />
+              HTTP METHOD
             </label>
             <select
-              id="httpMethod"
               value={method}
               onChange={handleMethodChange}
-              className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              className="cyber-input w-full px-3 py-2 bg-dark-800/50 border border-neon-purple/30 rounded-md text-neon-purple focus:outline-none focus:ring-2 focus:ring-neon-purple/50 focus:border-neon-purple font-fira-code"
             >
               <option value="GET">GET</option>
               <option value="POST">POST</option>
               <option value="PUT">PUT</option>
-              <option value="DELETE">DELETE</option>
               <option value="PATCH">PATCH</option>
-              <option value="HEAD">HEAD</option>
-              <option value="OPTIONS">OPTIONS</option>
+              <option value="DELETE">DELETE</option>
             </select>
           </div>
-          <div className="flex-1 overflow-hidden">
-            <div className="text-sm text-gray-500 dark:text-gray-400">URL:</div>
-            <div className="text-sm font-medium break-all">{parsedCurl.url}</div>
+
+          {/* Generation Method */}
+          <div className="cyber-card bg-gradient-to-br from-neon-yellow/10 to-neon-yellow/5 border border-neon-yellow/30 rounded-lg p-4">
+            <label className="block text-sm font-medium text-neon-yellow mb-2 font-rajdhani">
+              <Layers className="inline h-4 w-4 mr-2" />
+              GENERATION METHOD
+            </label>
+            <select
+              value={generationMethod}
+              onChange={(e) => onGenerationMethodChange(e.target.value as GenerationMethod)}
+              className="cyber-input w-full px-3 py-2 bg-dark-800/50 border border-neon-yellow/30 rounded-md text-neon-yellow focus:outline-none focus:ring-2 focus:ring-neon-yellow/50 focus:border-neon-yellow font-fira-code"
+            >
+              <option value={GenerationMethod.Loop}>Sequential Loop</option>
+              <option value={GenerationMethod.ParallelPromises}>Parallel Promises</option>
+            </select>
+            <div className="text-xs text-neon-yellow/60 mt-1 font-rajdhani">
+              {generationMethod === GenerationMethod.Loop ? 'Slower, less memory' : 'Faster, more memory'}
+            </div>
+          </div>
+
+          {/* API Testing */}
+          <div className="cyber-card bg-gradient-to-br from-neon-pink/10 to-neon-pink/5 border border-neon-pink/30 rounded-lg p-4">
+            <label className="block text-sm font-medium text-neon-pink mb-2 font-rajdhani">
+              <Terminal className="inline h-4 w-4 mr-2" />
+              API TESTING
+            </label>
+            <div className="flex items-center gap-3">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={runApiRequests}
+                  onChange={onToggleApiRequests}
+                  className="w-4 h-4 text-neon-pink bg-dark-800 border-neon-pink/30 rounded focus:ring-neon-pink/50 focus:ring-2"
+                />
+                <span className="text-sm text-neon-pink font-rajdhani">Enable</span>
+              </label>
+              {runApiRequests && (
+                <input
+                  type="number"
+                  min="200"
+                  max="599"
+                  value={expectedStatus}
+                  onChange={(e) => onExpectedStatusChange(parseInt(e.target.value) || 200)}
+                  className="cyber-input flex-1 px-2 py-1 bg-dark-800/50 border border-neon-pink/30 rounded text-neon-pink placeholder-neon-pink/50 focus:outline-none focus:ring-1 focus:ring-neon-pink/50 font-fira-code text-sm"
+                  placeholder="Status"
+                />
+              )}
+            </div>
           </div>
         </div>
-        
-        {/* Headers display */}
-        {Object.keys(parsedCurl.headers).length > 0 && (
-          <div className="mt-3">
-            <div className="flex items-center justify-between">
-              <div 
-                className="flex items-center gap-1 cursor-pointer text-sm text-gray-700 dark:text-gray-300 mb-2"
-                onClick={handleToggleDetails}
-              >
-                <List className="h-4 w-4" />
-                <span className="font-medium">Headers ({Object.keys(parsedCurl.headers).length})</span>
+
+        {/* Field Configuration */}
+        {showDetails && Object.keys(fields).length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="relative">
+                <Edit className="h-5 w-5 text-neon-cyan animate-neonGlow" />
+                <div className="absolute inset-0 bg-neon-cyan/20 rounded-full blur-md animate-pulse"></div>
               </div>
-              <button
-                onClick={() => setShowHeaderEditor(true)}
-                className="flex items-center gap-1 text-xs text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors"
-              >
-                <Edit className="h-3 w-3" />
-                <span>Edit Headers</span>
-              </button>
+              <h3 className="text-lg font-bold bg-gradient-to-r from-neon-cyan to-neon-purple bg-clip-text text-transparent font-orbitron">
+                FIELD CONFIGURATION MATRIX
+              </h3>
             </div>
             
-            {showDetails && (
-              <div className="bg-gray-50 dark:bg-gray-700 rounded p-3 text-sm max-h-60 overflow-y-auto">
-                {Object.entries(parsedCurl.headers).map(([key, value]) => (
-                  <div key={key} className="mb-1 last:mb-0">
-                    <span className="font-medium text-gray-700 dark:text-gray-300">{key}: </span>
-                    <span className="text-gray-600 dark:text-gray-400">
-                      {formatHeaderValue(key, value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
-
-        {/* Show "Add Headers" button if no headers present */}
-        {Object.keys(parsedCurl.headers).length === 0 && (
-          <div className="mt-3">
-            <button
-              onClick={() => setShowHeaderEditor(true)}
-              className="flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors"
-            >
-              <Edit className="h-4 w-4" />
-              <span>Add Headers</span>
-            </button>
-          </div>
-        )}
-
-        {/* Header Editor Modal */}
-        {showHeaderEditor && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="w-full max-w-2xl">
-              <HeaderEditor 
-                headers={parsedCurl.headers} 
-                onSave={handleHeaderSave}
-                onCancel={() => setShowHeaderEditor(false)} 
-              />
-            </div>
-          </div>
-        )}
-      </div>
-      
-      {/* Field configuration */}
-      <div className="mb-6">
-        <h3 className="text-md font-medium text-gray-800 dark:text-white mb-3">Field Configuration</h3>
-        
-        <div className="grid grid-cols-1 gap-3 max-h-80 overflow-y-auto p-1">
-          {Object.entries(groupFieldsByParent(fields)).map(([parentName, childFields]) => (
-            <div key={parentName} className={parentName ? "border-t border-gray-200 dark:border-gray-700 pt-3 mt-3" : ""}>
-              {parentName && (
-                <div className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 bg-gray-100 dark:bg-gray-600 px-3 py-1.5 rounded">
-                  {parentName} (Object)
-                </div>
-              )}
-              
-              {Object.entries(childFields).map(([fieldName, metadata]) => {
-                const fullFieldName = parentName ? `${parentName}.${fieldName}` : fieldName;
-                const config = fieldConfigs[fullFieldName] || { 
-                  type: metadata.type, 
-                  isStatic: true,
-                  staticValue: metadata.originalValue !== undefined ? String(metadata.originalValue) : '',
-                  randomType: guessRandomDataType(fieldName, metadata.type),
-                  fieldName: fullFieldName
-                };
-                
-                return (
-                  <div key={fullFieldName} className="bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-                    <div className="flex justify-between items-start gap-2 mb-2">
-                      <div>
-                        <div className="font-medium text-gray-800 dark:text-white">{fieldName}</div>
-                        <div className="text-xs text-gray-500 dark:text-gray-400">
-                          Type: {metadata.type}
-                          {metadata.originalValue !== undefined && (
-                            <span className="ml-2 text-primary-600 dark:text-primary-400">
-                              Original: {String(metadata.originalValue)}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                      
-                      <select
-                        value={config.isStatic ? "static" : "random"}
-                        onChange={(e) => handleFieldTypeChange(fullFieldName, e.target.value === "static")}
-                        className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded px-2 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                      >
-                        <option value="random">Random</option>
-                        <option value="static">Static</option>
-                      </select>
+            <div className="space-y-4">
+              {Object.entries(groupedFields).map(([groupName, groupFields]) => (
+                <div key={groupName} className="cyber-card bg-gradient-to-br from-dark-800/50 to-dark-900/50 border border-neon-cyan/20 rounded-lg p-4">
+                  {groupName !== '_root' && (
+                    <div className="flex items-center gap-2 mb-3 pb-2 border-b border-neon-cyan/20">
+                      <div className="w-2 h-2 bg-neon-cyan rounded-full animate-pulse"></div>
+                      <h4 className="font-medium text-neon-cyan font-rajdhani uppercase tracking-wide">
+                        {groupName} Object
+                      </h4>
                     </div>
-                    
-                    {config.isStatic ? (
-                      // Static value input field
-                      <div className="mt-2">
-                        {metadata.type === 'array' || /s$|list$|array$|items$|collection$|^additional/.test(fieldName.toLowerCase()) ? (
-                          <>
-                            <div className="flex justify-between items-center">
-                              <div className="text-xs text-gray-500 mb-1">Array format: Enter JSON array or comma-separated values</div>
+                  )}
+                  
+                  <div className="grid gap-4">
+                    {Object.entries(groupFields).map(([fieldName, metadata]) => {
+                      const fullFieldName = groupName === '_root' ? fieldName : `${groupName}.${fieldName}`;
+                      const config = fieldConfigs[fullFieldName];
+                      
+                      return (
+                        <div key={fullFieldName} className="grid grid-cols-1 lg:grid-cols-4 gap-3 p-3 bg-gradient-to-r from-neon-cyan/5 to-neon-purple/5 rounded-lg border border-neon-cyan/10">
+                          {/* Field Name */}
+                          <div className="lg:col-span-1">
+                            <label className="block text-sm font-medium text-neon-cyan mb-1 font-rajdhani">
+                              FIELD NAME
+                            </label>
+                            <div className="text-sm text-neon-cyan/80 font-fira-code bg-dark-800/30 px-2 py-1 rounded border border-neon-cyan/20">
+                              {fieldName}
+                            </div>
+                            <div className="text-xs text-neon-cyan/60 mt-1 font-rajdhani">
+                              Type: {metadata.type}
+                            </div>
+                          </div>
+
+                          {/* Value Type Toggle */}
+                          <div className="lg:col-span-1">
+                            <label className="block text-sm font-medium text-neon-purple mb-1 font-rajdhani">
+                              VALUE TYPE
+                            </label>
+                            <div className="flex gap-2">
                               <button
-                                onClick={() => handleSetSampleValue(fullFieldName, metadata)}
-                                className="text-xs text-primary-600 hover:text-primary-700"
-                                title="Generate sample array"
+                                onClick={() => handleFieldTypeChange(fullFieldName, true)}
+                                className={`flex-1 px-3 py-1 text-xs rounded transition-all duration-300 font-rajdhani font-medium ${
+                                  config?.isStatic
+                                    ? 'bg-neon-cyan/20 text-neon-cyan border border-neon-cyan/50'
+                                    : 'bg-dark-800/50 text-gray-400 border border-gray-600/30 hover:border-neon-cyan/30'
+                                }`}
                               >
-                                Generate sample
+                                STATIC
+                              </button>
+                              <button
+                                onClick={() => handleFieldTypeChange(fullFieldName, false)}
+                                className={`flex-1 px-3 py-1 text-xs rounded transition-all duration-300 font-rajdhani font-medium ${
+                                  !config?.isStatic
+                                    ? 'bg-neon-purple/20 text-neon-purple border border-neon-purple/50'
+                                    : 'bg-dark-800/50 text-gray-400 border border-gray-600/30 hover:border-neon-purple/30'
+                                }`}
+                              >
+                                RANDOM
                               </button>
                             </div>
-                            <textarea
-                              placeholder='E.g., ["value1", "value2"] or value1, value2'
-                              value={config.staticValue || ""}
-                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleStaticValueChange(fullFieldName, e.target.value)}
-                              rows={3}
-                              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            />
-                          </>
-                        ) : metadata.type === 'object' || /^props|^options|^config|^settings|^attributes|^metadata|^data$/.test(fieldName.toLowerCase()) ? (
-                          <>
-                            <div className="flex justify-between items-center">
-                              <div className="text-xs text-gray-500 mb-1">Object format: Enter valid JSON</div>
-                              <button
-                                onClick={() => handleSetSampleValue(fullFieldName, metadata)}
-                                className="text-xs text-primary-600 hover:text-primary-700"
-                                title="Generate sample object"
-                              >
-                                Generate sample
-                              </button>
-                            </div>
-                            <textarea
-                              placeholder='E.g., {"key": "value"}'
-                              value={config.staticValue || ""}
-                              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleStaticValueChange(fullFieldName, e.target.value)}
-                              rows={3}
-                              className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                            />
-                          </>
-                        ) : (
-                          <input
-                            type="text"
-                            placeholder="Static value"
-                            value={config.staticValue || ""}
-                            onChange={(e) => handleStaticValueChange(fullFieldName, e.target.value)}
-                            className="w-full px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-                          />
-                        )}
-                      </div>
-                    ) : (
-                      // Random data type selector
-                      <div className="mt-2">
-                        <div className="flex items-center gap-2">
-                          <Zap className="h-4 w-4 text-primary-500" />
-                          <select
-                            value={config.randomType || RandomDataType.Default}
-                            onChange={(e) => handleRandomTypeChange(fullFieldName, e.target.value as RandomDataType)}
-                            className="flex-1 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
-                          >
-                            {renderRandomTypeOptions()}
-                          </select>
+                          </div>
+
+                          {/* Value Configuration */}
+                          <div className="lg:col-span-2">
+                            {config?.isStatic ? (
+                              <div>
+                                <label className="block text-sm font-medium text-neon-cyan mb-1 font-rajdhani">
+                                  STATIC VALUE
+                                </label>
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    value={config.staticValue || ''}
+                                    onChange={(e) => handleStaticValueChange(fullFieldName, e.target.value)}
+                                    className="cyber-input flex-1 px-3 py-1 bg-dark-800/50 border border-neon-cyan/30 rounded text-neon-cyan placeholder-neon-cyan/50 focus:outline-none focus:ring-1 focus:ring-neon-cyan/50 font-fira-code text-sm"
+                                    placeholder="Enter static value..."
+                                  />
+                                  {(metadata.type === 'array' || metadata.type === 'object') && (
+                                    <button
+                                      onClick={() => handleSetSampleValue(fullFieldName, metadata)}
+                                      className="cyber-button px-3 py-1 bg-gradient-to-r from-neon-purple/20 to-neon-purple/10 border border-neon-purple/50 rounded text-neon-purple hover:from-neon-purple/30 hover:to-neon-purple/20 text-xs font-rajdhani font-medium"
+                                      title="Set sample value"
+                                    >
+                                      SAMPLE
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ) : (
+                              <div>
+                                <label className="block text-sm font-medium text-neon-purple mb-1 font-rajdhani">
+                                  RANDOM TYPE
+                                </label>
+                                <select
+                                  value={config?.randomType || RandomDataType.Default}
+                                  onChange={(e) => handleRandomTypeChange(fullFieldName, e.target.value as RandomDataType)}
+                                  className="cyber-input w-full px-3 py-1 bg-dark-800/50 border border-neon-purple/30 rounded text-neon-purple focus:outline-none focus:ring-1 focus:ring-neon-purple/50 font-fira-code text-sm"
+                                >
+                                  {renderRandomTypeOptions()}
+                                </select>
+                              </div>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    )}
+                      );
+                    })}
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
-          ))}
-        </div>
-      </div>
-      
-      {/* API Testing */}
-      <div className="mb-6">
-        <h3 className="text-md font-medium text-gray-800 dark:text-white mb-3">API Testing</h3>
-        
-        <div className="flex items-center mb-3">
-          <label className="inline-flex items-center cursor-pointer">
-            <input
-              type="checkbox"
-              checked={runApiRequests}
-              onChange={onToggleApiRequests}
-              className="sr-only peer"
-            />
-            <div className="relative w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary-300 dark:peer-focus:ring-primary-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary-600"></div>
-            <span className="ms-3 text-sm font-medium text-gray-700 dark:text-gray-300">Run API requests</span>
-          </label>
-        </div>
-        
-        {runApiRequests && (
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 bg-gray-50 dark:bg-gray-700 p-3 rounded-md">
-            <label htmlFor="expectedStatus" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-              Expected Status:
-            </label>
-            <input
-              id="expectedStatus"
-              type="number"
-              min="100"
-              max="599"
-              value={expectedStatus}
-              onChange={(e) => onExpectedStatusChange(parseInt(e.target.value) || 200)}
-              className="w-24 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
           </div>
         )}
-      </div>
-      
-      {/* Number of entries */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-6">
-        <div className="font-medium text-gray-800 dark:text-white">Number of entries to generate:</div>
-        <div className="flex items-center">
-          <input
-            type="number"
-            min="1"
-            max="1000"
-            value={numberOfEntries}
-            onChange={(e) => onChangeNumberOfEntries(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
-            className="w-24 px-3 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500"
-          />
+
+        {/* Generate Button */}
+        <div className="text-center">
+          <button
+            onClick={onGenerate}
+            disabled={isLoading}
+            className={`cyber-button inline-flex items-center gap-3 px-8 py-4 bg-gradient-to-r from-neon-green/20 to-neon-cyan/20 border-2 border-neon-green/50 rounded-lg text-neon-green hover:from-neon-green/30 hover:to-neon-cyan/30 hover:border-neon-green transition-all duration-300 hover:shadow-xl hover:shadow-neon-green/30 font-orbitron font-bold text-lg group ${
+              isLoading ? 'opacity-50 cursor-not-allowed' : ''
+            }`}
+          >
+            {isLoading ? (
+              <>
+                <RefreshIcon className="h-6 w-6 animate-spin" />
+                <span>PROCESSING...</span>
+              </>
+            ) : (
+              <>
+                <Play className="h-6 w-6 group-hover:animate-pulse" />
+                <span>GENERATE DATA</span>
+                <Zap className="h-4 w-4 group-hover:animate-bounce" />
+              </>
+            )}
+          </button>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400">Maximum: 1000 entries</p>
-      </div>
-      
-      {/* Generate button */}
-      <div className="flex justify-end">
-        <button
-          onClick={onGenerate}
-          disabled={isLoading}
-          className={`
-            flex items-center gap-2 px-4 py-2 rounded-md
-            ${isLoading 
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-              : 'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800'
-            }
-            transition-colors duration-200
-          `}
-        >
-          {isLoading ? (
-            <>
-              <RefreshIcon className="h-4 w-4 animate-spin" />
-              <span>Generating...</span>
-            </>
-          ) : (
-            <>
-              <Play className="h-4 w-4" />
-              <span>Generate Data</span>
-            </>
-          )}
-        </button>
       </div>
     </div>
   );

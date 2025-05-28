@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Copy, Download, File, CheckCircle, XCircle, ChevronDown, ChevronUp, Code } from 'lucide-react';
+import { Copy, Download, CheckCircle, XCircle, ChevronDown, ChevronUp, Database, Terminal } from 'lucide-react';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 import { ApiResult } from '../types';
@@ -14,7 +14,7 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, apiResults, onExpor
   const [expandedItems, setExpandedItems] = useState<Set<number>>(new Set([0, 1, 2]));
   const [showAllItems, setShowAllItems] = useState(false);
   const [activeTab, setActiveTab] = useState<'data' | 'api'>('data');
-  const [format, setFormat] = useState<'json' | 'csv'>('json');
+  const format = 'json'; // Fixed format for display
   
   const toggleItem = (index: number) => {
     const newExpandedItems = new Set(expandedItems);
@@ -47,247 +47,219 @@ const OutputDisplay: React.FC<OutputDisplayProps> = ({ data, apiResults, onExpor
   };
   
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 animate-fadeIn">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <File className="h-5 w-5 text-primary-500" />
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">
-            Generated Data ({data.length} entries)
-          </h2>
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-600 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="bg-cyan-600 rounded-lg p-2">
+            <Terminal className="h-6 w-6 text-white" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-white uppercase tracking-wider">
+              Data Output
+            </h2>
+            <p className="text-sm text-gray-300">
+              {data.length} entries generated • Processing complete
+            </p>
+          </div>
         </div>
-        
+
+        {/* Export Buttons */}
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopyToClipboard}
-            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-            title="Copy to clipboard"
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-semibold uppercase tracking-wider text-xs transition-colors duration-200"
           >
-            <Copy className="h-4 w-4" />
-            <span>Copy</span>
+            <div className="flex items-center gap-2">
+              <Copy className="h-3 w-3" />
+              <span>COPY</span>
+            </div>
           </button>
-          
           <button
             onClick={handleExport}
-            className="flex items-center gap-1 px-2 py-1 text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded"
-            title="Download file"
+            className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-semibold uppercase tracking-wider text-xs transition-colors duration-200"
           >
-            <Download className="h-4 w-4" />
-            <span>Download</span>
+            <div className="flex items-center gap-2">
+              <Download className="h-3 w-3" />
+              <span>EXPORT</span>
+            </div>
           </button>
         </div>
       </div>
-      
-      {/* Format selection tabs */}
-      <div className="flex mb-4 border-b border-gray-200 dark:border-gray-700">
-        <button 
-          className={`flex items-center gap-1 px-3 py-2 text-sm font-medium border-b-2 ${
-            format === 'json' 
-              ? 'border-primary-500 text-primary-600 dark:text-primary-400' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-          onClick={() => setFormat('json')}
-        >
-          <Code className="h-4 w-4" />
-          <span>JSON</span>
-        </button>
-        
-        <button 
-          className={`flex items-center gap-1 px-3 py-2 text-sm font-medium border-b-2 ${
-            format === 'csv' 
-              ? 'border-primary-500 text-primary-600 dark:text-primary-400' 
-              : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-          }`}
-          onClick={() => setFormat('csv')}
-        >
-          <File className="h-4 w-4" />
-          <span>CSV</span>
-        </button>
-      </div>
-      
-      {/* Tabs for data/API results (shown when API results exist) */}
-      {apiResults && apiResults.length > 0 && (
-        <div className="flex mb-4 border-b border-gray-200 dark:border-gray-700">
-          <button 
-            className={`flex items-center gap-1 px-3 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'data' 
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
-            onClick={() => setActiveTab('data')}
-          >
-            <span>Generated Data</span>
-          </button>
-          
-          <button 
-            className={`flex items-center gap-1 px-3 py-2 text-sm font-medium border-b-2 ${
-              activeTab === 'api' 
-                ? 'border-primary-500 text-primary-600 dark:text-primary-400' 
-                : 'border-transparent text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-            }`}
-            onClick={() => setActiveTab('api')}
-          >
-            <span>API Results</span>
-          </button>
-        </div>
-      )}
-      
-      {/* Data content */}
-      {activeTab === 'data' && (
-        <div className="space-y-2">
-          {data.slice(0, showAllItems ? data.length : 3).map((item, index) => (
-            <div key={index} className="border border-gray-100 dark:border-gray-700 rounded-md overflow-hidden">
+
+      {/* Tabs */}
+      <div className="bg-gray-800 border border-gray-600 rounded-lg overflow-hidden">
+        <div className="bg-gray-700 border-b border-gray-600">
+          <div className="flex">
+            {[
+              { id: 'data', label: 'GENERATED DATA', icon: Database, color: 'cyan' },
+              { id: 'api', label: 'API RESULTS', icon: Terminal, color: 'purple' }
+            ].map((tab) => (
               <button
-                onClick={() => toggleItem(index)}
-                className="w-full flex items-center justify-between p-2 bg-gray-50 dark:bg-gray-700 text-left"
-              >
-                <span className="font-medium text-gray-700 dark:text-gray-300">Item #{index + 1}</span>
-                {expandedItems.has(index) ? (
-                  <ChevronUp className="h-4 w-4 text-gray-500" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                )}
-              </button>
-              
-              {expandedItems.has(index) && (
-                <SyntaxHighlighter
-                  language={format === 'json' ? 'json' : 'text'}
-                  style={vs2015}
-                  customStyle={{
-                    margin: 0,
-                    padding: '16px',
-                    borderRadius: '0',
-                    fontSize: '0.9rem',
-                  }}
-                >
-                  {format === 'json' 
-                    ? JSON.stringify(item, (key, value) => {
-                        // Handle special case for array of objects being displayed as string 
-                        if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && value[0].includes('[object Object]')) {
-                          // Try to parse the array entries properly
-                          try {
-                            // If this is a relation array that was improperly stringified
-                            if (key === 'relations') {
-                              // Create proper objects instead of "[object Object]" strings
-                              return value.flatMap(val => {
-                                if (typeof val === 'string' && val.includes('[object Object]')) {
-                                  // Count how many objects are in the string
-                                  const count = (val.match(/\[object Object\]/g) || []).length;
-                                  // Create an array of proper objects with default properties
-                                  return Array(count).fill(0).map((_, i) => ({ 
-                                    id: i === 0 ? 123 : 456, 
-                                    type: i === 0 ? "friend" : "family"
-                                  }));
-                                }
-                                return val;
-                              });
-                            }
-                          } catch (e) {
-                            console.error("Error parsing relation objects:", e);
-                          }
-                        }
-                        return value;
-                      }, 2) 
-                    : Object.keys(item).map(key => {
-                        const value = item[key];
-                        if (Array.isArray(value)) {
-                          // Handle arrays more cleanly in CSV view
-                          return `${key}: [${value.map(v => 
-                            typeof v === 'object' && v !== null ? JSON.stringify(v) : v
-                          ).join(', ')}]`;
-                        }
-                        return `${key}: ${value}`;
-                      }).join('\n')
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id as 'data' | 'api')}
+                className={`
+                  flex items-center gap-2 px-6 py-3 font-semibold uppercase tracking-wider text-sm
+                  transition-all duration-200 relative
+                  ${activeTab === tab.id 
+                    ? `text-${tab.color}-400 border-b-2 border-${tab.color}-400 bg-gray-600` 
+                    : 'text-gray-300 hover:text-white hover:bg-gray-600'
                   }
-                </SyntaxHighlighter>
+                `}
+              >
+                <tab.icon className="h-4 w-4" />
+                <span>{tab.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Tab Content */}
+        <div className="p-6">
+          {activeTab === 'data' && (
+            <div className="space-y-4">
+              {data.slice(0, showAllItems ? data.length : 3).map((item, index) => (
+                <div key={index} className="bg-gray-700 border border-gray-600 rounded-lg overflow-hidden">
+                  <div className="bg-gray-600 px-4 py-2 border-b border-gray-500">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-cyan-600 rounded flex items-center justify-center">
+                          <span className="text-xs font-semibold text-white">{index + 1}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-white uppercase tracking-wider">
+                          Data Entry #{index + 1}
+                        </span>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleItem(index);
+                        }}
+                        className="bg-gray-500 hover:bg-gray-400 p-1 rounded transition-colors duration-200"
+                        title={expandedItems.has(index) ? 'Collapse' : 'Expand'}
+                      >
+                        {expandedItems.has(index) ? (
+                          <ChevronUp className="h-4 w-4 text-white" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-white" />
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="relative">
+                    {expandedItems.has(index) && (
+                      <SyntaxHighlighter
+                        language={format === 'json' ? 'json' : 'text'}
+                        style={vs2015}
+                        customStyle={{
+                          margin: 0,
+                          padding: '16px',
+                          borderRadius: '0',
+                          fontSize: '0.875rem',
+                          fontFamily: 'monospace',
+                          background: '#1f2937',
+                          color: '#e5e7eb',
+                          border: 'none',
+                        }}
+                      >
+                        {format === 'json' 
+                          ? JSON.stringify(item, (key, value) => {
+                              if (Array.isArray(value) && value.length > 0 && typeof value[0] === 'string' && value[0].includes('[object Object]')) {
+                                try {
+                                  if (key === 'relations') {
+                                    const count = (value[0].match(/\[object Object\]/g) || []).length;
+                                    return Array(count).fill(0).map((_, i) => ({ 
+                                      id: i === 0 ? 123 : 456, 
+                                      type: i === 0 ? "friend" : "family"
+                                    }));
+                                  }
+                                } catch (e) {
+                                  console.error("Error parsing relation objects:", e);
+                                }
+                              }
+                              return value;
+                            }, 2) 
+                          : Object.keys(item).map(key => {
+                              const value = item[key];
+                              if (Array.isArray(value)) {
+                                return `${key}: [${value.map(v => 
+                                  typeof v === 'object' && v !== null ? JSON.stringify(v) : v
+                                ).join(', ')}]`;
+                              }
+                              return `${key}: ${value}`;
+                            }).join('\n')
+                      }
+                      </SyntaxHighlighter>
+                    )}
+                  </div>
+                </div>
+              ))}
+              
+              {data.length > 3 && (
+                <div className="text-center pt-4">
+                  <button
+                    onClick={toggleShowAll}
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-3 rounded-lg font-semibold transition-colors duration-200"
+                  >
+                    {showAllItems ? 'COLLAPSE VIEW' : `EXPAND ALL (${data.length - 3} MORE)`}
+                  </button>
+                </div>
               )}
             </div>
-          ))}
-          
-          {data.length > 3 && (
-            <button
-              onClick={toggleShowAll}
-              className="w-full py-2 text-sm text-center text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors"
-            >
-              {showAllItems ? `Show only first 3 items` : `Show all ${data.length} items`}
-            </button>
           )}
-        </div>
-      )}
-      
-      {/* API Results */}
-      {activeTab === 'api' && apiResults && (
-        <div className="space-y-2">
-          {apiResults.slice(0, showAllItems ? apiResults.length : 3).map((result, index) => (
-            <div key={index} className="border border-gray-100 dark:border-gray-700 rounded-md overflow-hidden">
-              <div 
-                className={`flex items-center justify-between p-2 ${
-                  result.success 
-                    ? 'bg-green-50 dark:bg-green-900/20' 
-                    : 'bg-red-50 dark:bg-red-900/20'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  {result.success ? (
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <XCircle className="h-4 w-4 text-red-500" />
-                  )}
-                  <span className="font-medium">
-                    Request #{index + 1} - Status: {result.status}
-                  </span>
-                </div>
-                <button
-                  onClick={() => toggleItem(index)}
-                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                >
-                  {expandedItems.has(index) ? (
-                    <ChevronUp className="h-4 w-4" />
-                  ) : (
-                    <ChevronDown className="h-4 w-4" />
-                  )}
-                </button>
-              </div>
-              
-              {expandedItems.has(index) && (
-                <div className="p-3 bg-gray-50 dark:bg-gray-700">
-                  {result.error ? (
-                    <div className="text-red-500 text-sm">
-                      Error: {result.error}
+          
+          {activeTab === 'api' && apiResults && (
+            <div className="space-y-4">
+              {apiResults.map((result, index) => (
+                <div key={index} className="bg-gray-700 border border-gray-600 rounded-lg overflow-hidden">
+                  <div className="bg-gray-600 px-4 py-2 border-b border-gray-500">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <div className="w-6 h-6 bg-purple-600 rounded flex items-center justify-center">
+                          <span className="text-xs font-semibold text-white">{index + 1}</span>
+                        </div>
+                        <span className="text-sm font-semibold text-white uppercase tracking-wider">
+                          API REQUEST #{index + 1}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {result.success ? (
+                          <CheckCircle className="h-4 w-4 text-green-500" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500" />
+                        )}
+                        <span className={`text-sm font-semibold ${
+                          result.success ? 'text-green-500' : 'text-red-500'
+                        }`}>
+                          STATUS: {result.status}
+                        </span>
+                      </div>
                     </div>
-                  ) : result.response ? (
+                  </div>
+                  <div className="relative">
                     <SyntaxHighlighter
                       language="json"
                       style={vs2015}
                       customStyle={{
                         margin: 0,
                         padding: '16px',
-                        borderRadius: '0.25rem',
-                        fontSize: '0.9rem',
+                        borderRadius: '0',
+                        fontSize: '0.875rem',
+                        fontFamily: 'monospace',
+                        background: '#1f2937',
+                        color: '#e5e7eb',
+                        border: 'none',
                       }}
                     >
-                      {typeof result.response === 'string' 
-                        ? result.response 
-                        : JSON.stringify(result.response, null, 2)
-                      }
+                      {JSON.stringify(result.response, null, 2)}
                     </SyntaxHighlighter>
-                  ) : (
-                    <div className="text-gray-500 text-sm">No response data</div>
-                  )}
+                  </div>
                 </div>
-              )}
+              ))}
             </div>
-          ))}
-          
-          {apiResults.length > 3 && (
-            <button
-              onClick={toggleShowAll}
-              className="w-full py-2 text-sm text-center text-primary-600 hover:text-primary-700 dark:text-primary-400 transition-colors"
-            >
-              {showAllItems ? `Show only first 3 requests` : `Show all ${apiResults.length} requests`}
-            </button>
           )}
         </div>
-      )}
+      </div>
     </div>
   );
 };

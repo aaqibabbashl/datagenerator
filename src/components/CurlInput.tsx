@@ -1,7 +1,5 @@
 import React from 'react';
-import { Terminal, Trash, ArrowRight } from 'lucide-react';
-import SyntaxHighlighter from 'react-syntax-highlighter';
-import { vs2015 } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import { Terminal, Trash, ArrowRight, Code2, Clipboard } from 'lucide-react';
 
 interface CurlInputProps {
   curlInput: string;
@@ -26,157 +24,202 @@ const CurlInput: React.FC<CurlInputProps> = ({
 }) => {
   // Example CURL commands for demo
   const examples = [
-    'curl -X POST https://api.example.com/users -H "Content-Type: application/json" -d \'{"name": "John Doe", "email": "john@example.com", "age": 30}\'',
-    'curl -X POST https://api.example.com/products -H "Content-Type: application/json" -d \'{"productName": "Smartphone", "price": 999.99, "description": "Latest model", "available": true, "category": "Electronics"}\'',
+    'curl -X POST https://api.nexus.com/users -H "Content-Type: application/json" -H "Authorization: Bearer token123" -d \'{"name":"John Doe","email":"john@example.com","age":30}\'',
+    'curl -X GET https://api.nexus.com/products?category=electronics&limit=10 -H "Accept: application/json"',
+    'curl -X PUT https://api.nexus.com/orders/123 -H "Content-Type: application/json" -d \'{"status":"shipped","tracking":"ABC123"}\''
   ];
 
-  const handleExample = (example: string) => {
+  const handlePasteFromClipboard = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text.trim().startsWith('curl')) {
+        onChange(text.trim());
+      } else {
+        alert('Clipboard does not contain a valid CURL command');
+      }
+    } catch (error) {
+      console.error('Failed to read from clipboard:', error);
+      alert('Failed to access clipboard. Please paste manually.');
+    }
+  };
+
+  const handleExampleClick = (example: string) => {
     onChange(example);
   };
 
   return (
-    <div className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-5 animate-fadeIn">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <Terminal className="h-5 w-5 text-primary-500" />
-          <h2 className="text-lg font-semibold text-gray-800 dark:text-white">CURL Command</h2>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button
-            onClick={onClear}
-            className="p-2 text-gray-500 hover:text-error-500 transition-colors rounded-md hover:bg-gray-100 dark:hover:bg-gray-700"
-            title="Clear input"
-          >
-            <Trash className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
-      
-      {/* CURL input area */}
-      <div className="mb-4 relative">
-        <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
-          <SyntaxHighlighter
-            language="bash"
-            style={vs2015}
-            customStyle={{
-              margin: 0,
-              padding: '16px',
-              borderRadius: '0.5rem',
-              fontSize: '0.9rem',
-              minHeight: '120px',
-              maxHeight: '300px',
-              overflowY: 'auto',
-              fontFamily: 'monospace',
-            }}
-          >
-            {curlInput || '# Paste your CURL command here'}
-          </SyntaxHighlighter>
-          <textarea
-            value={curlInput}
-            onChange={(e) => onChange(e.target.value)}
-            placeholder="Paste your CURL command here..."
-            className="absolute top-0 left-0 w-full h-full opacity-0 resize-none"
-            style={{ minHeight: '120px' }}
-          />
-        </div>
-      </div>
-      
-      {/* Number of entries */}
-      <div className="mb-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-          <label htmlFor="numberOfEntries" className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Number of entries to generate:
-          </label>
-          <div className="flex items-center">
-            <input
-              id="numberOfEntries"
-              type="number"
-              min="1"
-              max="1000"
-              value={numberOfEntries}
-              onChange={(e) => onChangeNumberOfEntries(Math.max(1, Math.min(1000, parseInt(e.target.value) || 1)))}
-              className="w-24 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:outline-none focus:ring-2 focus:ring-primary-500 dark:bg-gray-700 dark:text-white"
-            />
+    <div className="space-y-6">
+      {/* Header Section */}
+      <div className="cyber-card bg-dark-900/80 border-neon-cyan shadow-neon-cyan p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <Terminal className="h-5 w-5 text-neon-cyan animate-neonGlow" />
+            <h3 className="font-orbitron font-bold text-neon-cyan neon-text">
+              NEURAL COMMAND PROCESSOR
+            </h3>
+          </div>
+          
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={handlePasteFromClipboard}
+              className="cyber-button bg-neon-green/10 border-neon-green text-neon-green hover:bg-neon-green/20 px-3 py-1 text-xs"
+              title="Paste CURL from clipboard"
+            >
+              <Clipboard className="h-3 w-3" />
+            </button>
+            
+            <button
+              onClick={onClear}
+              className="cyber-button bg-neon-pink/10 border-neon-pink text-neon-pink hover:bg-neon-pink/20 px-3 py-1 text-xs"
+              title="Clear input"
+            >
+              <Trash className="h-3 w-3" />
+            </button>
           </div>
         </div>
-        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Maximum: 1000 entries</p>
       </div>
-      
-      {/* Examples */}
-      <div className="mb-4">
-        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">Examples:</p>
-        <div className="flex flex-col gap-2">
+
+      {/* Main Input Section */}
+      <div className="cyber-card bg-dark-900/90 border-neon-cyan shadow-neon-cyan p-6">
+        <div className="space-y-4">
+          {/* Input Area */}
+          <div className="relative">
+            <div className="flex items-center space-x-2 mb-3">
+              <Code2 className="h-4 w-4 text-neon-cyan animate-neonPulse" />
+              <label className="text-sm font-orbitron font-bold text-neon-cyan">
+                CURL COMMAND INPUT
+              </label>
+              <button
+                onClick={handlePasteFromClipboard}
+                className="cyber-button bg-neon-cyan/10 border-neon-cyan text-neon-cyan hover:bg-neon-cyan/20 px-2 py-1 text-xs ml-auto"
+              >
+                <Clipboard className="h-3 w-3 mr-1" />
+                PASTE CURL
+              </button>
+            </div>
+            
+            <textarea
+              value={curlInput}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="curl -X POST https://api.example.com/endpoint -H Content-Type:application/json -d data"
+              className="cyber-input w-full h-32 resize-none font-fira-code text-sm bg-dark-800/90 border-2 border-neon-cyan/50 focus:border-neon-cyan text-neon-cyan placeholder-neon-cyan/40"
+              style={{
+                background: 'rgba(17, 17, 17, 0.95)',
+                boxShadow: '0 0 15px rgba(0, 255, 255, 0.2), inset 0 0 15px rgba(0, 255, 255, 0.05)',
+              }}
+            />
+            
+            {/* Animated cursor effect */}
+            <div className="absolute bottom-2 right-2">
+              <div className="w-2 h-4 bg-neon-cyan animate-blink"></div>
+            </div>
+          </div>
+
+          {/* Configuration Panel */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="cyber-card bg-dark-800/50 border-neon-green shadow-neon-green p-4">
+              <label className="block text-sm font-orbitron font-bold text-neon-green mb-2">
+                DATA ENTRIES
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="1000"
+                value={numberOfEntries}
+                onChange={(e) => onChangeNumberOfEntries(parseInt(e.target.value) || 1)}
+                className="cyber-input w-full bg-dark-700/90 border-neon-green text-neon-green"
+              />
+            </div>
+
+            <div className="cyber-card bg-dark-800/50 border-neon-purple shadow-neon-purple p-4">
+              <div className="flex items-center space-x-2 mb-2">
+                <span className="text-sm font-orbitron font-bold text-neon-purple">
+                  PROCESSING STATUS
+                </span>
+              </div>
+              <div className="flex items-center space-x-2">
+                <div className={`w-2 h-2 rounded-full ${isLoading ? 'bg-neon-yellow animate-neonPulse' : 'bg-neon-green animate-neonGlow'}`}></div>
+                <span className="text-xs font-fira-code text-neon-cyan">
+                  {isLoading ? 'PROCESSING...' : 'READY FOR INPUT'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Button */}
+          <div className="flex justify-center">
+            <button
+              onClick={onParse}
+              disabled={!curlInput.trim() || isLoading}
+              className="cyber-button bg-neon-cyan/10 border-neon-cyan text-neon-cyan hover:bg-neon-cyan/20 disabled:opacity-50 disabled:cursor-not-allowed px-8 py-3 text-lg font-orbitron font-bold"
+            >
+              <div className="flex items-center space-x-3">
+                <ArrowRight className="h-5 w-5 animate-neonGlow" />
+                <span>{isLoading ? 'INITIALIZING...' : 'INITIALIZE PARSING'}</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Neural Templates Section */}
+      <div className="cyber-card bg-dark-900/80 border-neon-yellow shadow-neon-yellow p-6">
+        <div className="flex items-center space-x-3 mb-4">
+          <Terminal className="h-5 w-5 text-neon-yellow animate-neonPulse" />
+          <h3 className="font-orbitron font-bold text-neon-yellow neon-text">
+            NEURAL TEMPLATES
+          </h3>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-3">
           {examples.map((example, index) => (
             <button
               key={index}
-              onClick={() => handleExample(example)}
-              className="text-left text-xs p-2 border border-gray-100 dark:border-gray-700 rounded hover:bg-gray-50 dark:hover:bg-gray-700 truncate overflow-hidden"
+              onClick={() => handleExampleClick(example)}
+              className="cyber-card bg-dark-800/50 border-neon-blue/50 hover:border-neon-blue shadow-neon-blue/50 hover:shadow-neon-blue p-3 text-left transition-all duration-300 group"
             >
-              {example}
+              <div className="flex items-start space-x-3">
+                <div className="cyber-card bg-dark-700/80 border-neon-blue p-2 mt-1">
+                  <span className="text-xs font-orbitron font-bold text-neon-blue">
+                    T{index + 1}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-xs font-fira-code text-neon-cyan/80 group-hover:text-neon-cyan transition-colors duration-300 break-all">
+                    {example.length > 100 ? `${example.substring(0, 100)}...` : example}
+                  </div>
+                  <div className="text-xs text-neon-blue/60 mt-1 font-rajdhani">
+                    {index === 0 && 'POST Request with JSON payload'}
+                    {index === 1 && 'GET Request with query parameters'}
+                    {index === 2 && 'PUT Request for data updates'}
+                  </div>
+                </div>
+              </div>
             </button>
           ))}
         </div>
       </div>
-      
-      {/* Error message */}
+
+      {/* Error Display */}
       {error && (
-        <div className="mb-4 p-3 bg-error-500/10 text-error-500 rounded-md text-sm">
-          <p className="font-medium">Error processing CURL command:</p>
-          <p>{error}</p>
+        <div className="cyber-card bg-dark-900/90 border-neon-pink shadow-neon-pink p-4">
+          <div className="flex items-center space-x-3">
+            <div className="cyber-card bg-neon-pink/20 border-neon-pink p-2">
+              <Terminal className="h-4 w-4 text-neon-pink animate-neonFlicker" />
+            </div>
+            <div>
+              <h4 className="font-orbitron font-bold text-neon-pink mb-1">
+                SYSTEM ERROR DETECTED
+              </h4>
+              <p className="text-sm font-fira-code text-neon-pink/80">
+                {error}
+              </p>
+            </div>
+          </div>
         </div>
       )}
-      
-      {/* Parse button */}
-      <div className="flex justify-end">
-        <button
-          onClick={onParse}
-          disabled={isLoading || !curlInput.trim()}
-          className={`
-            flex items-center gap-2 px-4 py-2 rounded-md
-            ${isLoading || !curlInput.trim() 
-              ? 'bg-gray-300 text-gray-500 cursor-not-allowed' 
-              : 'bg-primary-600 text-white hover:bg-primary-700 active:bg-primary-800'
-            }
-            transition-colors duration-200
-          `}
-        >
-          {isLoading ? (
-            <>
-              <RefreshIcon className="h-4 w-4 animate-spin" />
-              <span>Processing...</span>
-            </>
-          ) : (
-            <>
-              <ArrowRight className="h-4 w-4" />
-              <span>Parse CURL</span>
-            </>
-          )}
-        </button>
-      </div>
     </div>
   );
 };
 
-// RefreshIcon component for loading state
-const RefreshIcon: React.FC<{ className?: string }> = ({ className }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    className={className}
-    width="24" 
-    height="24" 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round"
-  >
-    <path d="M21 12a9 9 0 0 0-9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-    <path d="M3 3v5h5" />
-    <path d="M3 12a9 9 0 0 0 9 9 9.75 9.75 0 0 0 6.74-2.74L21 16" />
-    <path d="M16 21h5v-5" />
-  </svg>
-);
-
-export default CurlInput;
+export default CurlInput; 
