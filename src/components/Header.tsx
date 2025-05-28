@@ -122,7 +122,6 @@ const Header: React.FC<HeaderProps> = ({ onPasteCurl, onClearInput }) => {
                 <div>
                   <div className="text-xs font-semibold text-gray-300 uppercase tracking-wider">Developed By</div>
                   <div className="text-sm font-bold text-white">Aaqib Abbas</div>
-                  <div className="text-xs text-gray-400">Full Stack Developer</div>
                 </div>
               </div>
             </div>
